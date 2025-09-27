@@ -292,52 +292,63 @@ function ApplicationForm({
 
   const form = useForm<any>({
     defaultValues: {
-      name: "",
+      fullName: "",
       email: "",
       phone: "",
       experience: "",
       qualifications: "",
       coverLetter: "",
-      resumeFile: null,
+      resume: null,
     },
   });
 
-  const onSubmit = (data: any) => {
+  const onSubmit = async (data: any) => {
     const formData = new FormData();
-    formData.append("name", data.name);
+    formData.append("fullName", data.fullName);
     formData.append("email", data.email);
     formData.append("phone", data.phone);
     formData.append("experience", data.experience);
     formData.append("qualifications", data.qualifications);
     formData.append("coverLetter", data.coverLetter);
-    if (data.resumeFile) {
-      formData.append("resume", data.resumeFile);
+    if (data.resume) {
+      formData.append("resume", data.resume);
     }
 
-    emailjs
-      .sendForm(
-        "YOUR_SERVICE_ID", // EmailJS se milega
-        "YOUR_TEMPLATE_ID", // EmailJS se milega
-        "#jobApplicationForm", // 👈 form ka ID
-        "YOUR_PUBLIC_KEY" // EmailJS se milega
-      )
-      .then(
-        () => {
-          toast({
-            title: "Application Sent",
-            description: "Your application has been emailed to HR.",
-          });
-          form.reset();
-          onClose();
-        },
-        (err) => {
-          toast({
-            title: "Error",
-            description: "Failed to send: " + err.text,
-            variant: "destructive",
-          });
-        }
-      );
+    try {
+      const response = await fetch("http://localhost:5000/api/apply", {
+        method: "POST",
+        body: formData,
+      });
+
+      let result: any = {};
+      try {
+        result = await response.json();
+      } catch {
+        console.warn("⚠️ Response was not JSON");
+      }
+
+      if (response.ok) {
+        toast({
+          title: "✅ Application Sent",
+          description: "Your application has been submitted successfully!",
+        });
+        form.reset();
+        onClose();
+      } else {
+        toast({
+          title: "❌ Error",
+          description: result.message || "Something went wrong",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("❌ Frontend error:", err);
+      toast({
+        title: "❌ Network Error",
+        description: "Could not connect to the server",
+        variant: "destructive",
+      });
+    }
   };
 
   if (!position) return null;
@@ -348,78 +359,70 @@ function ApplicationForm({
         <DialogTitle>Apply for {position.title}</DialogTitle>
       </DialogHeader>
       <Form {...form}>
-        {/* 👇 Form ID important hai for EmailJS */}
         <form
-          id="jobApplicationForm"
           onSubmit={form.handleSubmit(onSubmit)}
           className="space-y-4"
           encType="multipart/form-data"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Full Name */}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter your full name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {/* Email */}
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address *</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="Enter your email"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+          {/* Full Name */}
+          <FormField
+            control={form.control}
+            name="fullName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Full Name *</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter your full name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Phone */}
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone Number *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter your phone number" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {/* Experience */}
-            <FormField
-              control={form.control}
-              name="experience"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Years of Experience *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. 2-3 years" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+          {/* Email */}
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email Address *</FormLabel>
+                <FormControl>
+                  <Input type="email" placeholder="Enter your email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Phone */}
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone Number *</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter your phone number" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Experience */}
+          <FormField
+            control={form.control}
+            name="experience"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Years of Experience *</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g. 2-3 years" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           {/* Qualifications */}
           <FormField
@@ -444,10 +447,7 @@ function ApplicationForm({
               <FormItem>
                 <FormLabel>Cover Letter</FormLabel>
                 <FormControl>
-                  <Textarea
-                    placeholder="Tell us why you’re interested"
-                    {...field}
-                  />
+                  <Textarea placeholder="Tell us why you’re interested" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -457,7 +457,7 @@ function ApplicationForm({
           {/* Resume Upload */}
           <FormField
             control={form.control}
-            name="resumeFile"
+            name="resume"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Upload Resume *</FormLabel>
@@ -486,6 +486,7 @@ function ApplicationForm({
     </DialogContent>
   );
 }
+
 
 export default function Careers() {
   const [selectedPosition, setSelectedPosition] = useState<JobPosition | null>(
